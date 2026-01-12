@@ -21,20 +21,24 @@
 </head>
 <body>
 
-<canvas id="canvas" width="600" height="600"></canvas>
+<canvas id="canvas"></canvas>
 
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-ctx.translate(canvas.width / 2, canvas.height / 2);
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
 
 let outlinePoints = [];
 let drawIndex = 0;
 let fillProgress = 0;
 let showText = false;
 let textAlpha = 0;
-let sparkles = [];
 let sparkleActive = false;
 
 for (let t = 0; t <= Math.PI * 2; t += 0.02) {
@@ -48,42 +52,54 @@ for (let t = 0; t <= Math.PI * 2; t += 0.02) {
     outlinePoints.push({ x: x * 12, y: -y * 12 });
 }
 
+const SPARKLE_COUNT = 200;
+const sparkles = [];
+
 function createSparkle() {
     return {
-        x: Math.random() * canvas.width - canvas.width / 2,
-        y: Math.random() * canvas.height - canvas.height / 2,
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
         r: Math.random() * 1.5 + 0.5,
         alpha: Math.random(),
-        speed: Math.random() * 0.02 + 0.01
+        speed: Math.random() * 0.015 + 0.005
     };
 }
 
-for (let i = 0; i < 120; i++) sparkles.push(createSparkle());
+for (let i = 0; i < SPARKLE_COUNT; i++) {
+    sparkles.push(createSparkle());
+}
+
+function drawSparkles() {
+    ctx.fillStyle = "#ffffff";
+    sparkles.forEach(s => {
+        ctx.globalAlpha = s.alpha;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        s.alpha += s.speed;
+        if (s.alpha > 1) {
+            s.alpha = 0;
+            s.x = Math.random() * canvas.width;
+            s.y = Math.random() * canvas.height;
+        }
+    });
+    ctx.globalAlpha = 1;
+}
 
 function animate() {
-    ctx.clearRect(-300, -300, 600, 600);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // ✨ Sparkle background
-    if (sparkleActive) {
-        ctx.fillStyle = "#ffffff";
-        sparkles.forEach(s => {
-            ctx.globalAlpha = s.alpha;
-            ctx.beginPath();
-            ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-            ctx.fill();
-            s.alpha += s.speed;
-            if (s.alpha > 1) s.alpha = 0;
-        });
-        ctx.globalAlpha = 1;
-    }
+    if (sparkleActive) drawSparkles();
 
-    // 💗 Fill heart
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+
     if (fillProgress > 0) {
         ctx.globalAlpha = Math.min(fillProgress, 1);
         ctx.beginPath();
         outlinePoints.forEach((p, i) => {
-            if (i === 0) ctx.moveTo(p.x, p.y);
-            else ctx.lineTo(p.x, p.y);
+            i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
         });
         ctx.closePath();
         ctx.fillStyle = "#ff7aa2";
@@ -116,6 +132,8 @@ function animate() {
         ctx.fillText("hana", 0, 25);
         ctx.globalAlpha = 1;
     }
+
+    ctx.restore();
 
     requestAnimationFrame(animate);
 }
