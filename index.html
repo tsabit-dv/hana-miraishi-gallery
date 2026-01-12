@@ -17,7 +17,9 @@ html, body {
 canvas {
     position: absolute;
     inset: 0;
+    z-index: 1;
 }
+
 .button {
     padding: 14px 36px;
     font-size: 16px;
@@ -29,6 +31,7 @@ canvas {
     cursor: pointer;
     box-shadow: 0 0 25px rgba(255,122,162,0.4);
     transition: all 0.4s ease;
+    z-index: 20;
 }
 
 .button:hover {
@@ -40,7 +43,7 @@ canvas {
 #galleryBtn {
     position: absolute;
     left: 50%;
-    bottom: 120px;
+    bottom: 140px;
     transform: translateX(-50%);
     opacity: 0;
     pointer-events: none;
@@ -63,6 +66,7 @@ canvas {
     opacity: 0;
     pointer-events: none;
     transition: opacity 1.2s ease;
+    z-index: 10;
 }
 
 .carousel-card {
@@ -79,12 +83,6 @@ canvas {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    animation: fade 3s ease-in-out infinite;
-}
-
-@keyframes fade {
-    0%, 100% { opacity: 1 }
-    50% { opacity: 0.95 }
 }
 
 .hint {
@@ -94,6 +92,7 @@ canvas {
     text-align: center;
     color: #aaa;
     font-size: 14px;
+    z-index: 5;
 }
 </style>
 </head>
@@ -148,7 +147,6 @@ for (let t = 0; t <= Math.PI * 2; t += 0.02) {
         5 * Math.cos(2 * t) -
         2 * Math.cos(3 * t) -
         Math.cos(4 * t);
-
     heartPoints.push({ x: x * 12, y: -y * 12 });
 }
 
@@ -178,7 +176,7 @@ const backBtn = document.getElementById("backBtn");
 const carousel = document.getElementById("carousel");
 const carouselImg = document.getElementById("carouselImg");
 
-const images = ["img1.jpeg", "img2.jpeg", "img3.jpeg"];
+const images = ["img1.jpg", "img2.jpg", "img3.jpg"];
 let imgIndex = 0;
 
 setInterval(() => {
