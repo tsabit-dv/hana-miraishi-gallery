@@ -3,25 +3,122 @@
 <head>
 <meta charset="UTF-8">
 <title>For Hana</title>
+
 <style>
-    body {
-        margin: 0;
-        background: radial-gradient(circle at center, #1a1a1a, #000);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        overflow: hidden;
-        font-family: "Segoe Script", cursive;
-    }
-    canvas {
-        background: transparent;
-    }
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, #1a1a1a, #000);
+    overflow: hidden;
+    font-family: "Segoe Script", cursive;
+}
+
+/* ================= CANVAS ================= */
+canvas {
+    position: absolute;
+    inset: 0;
+}
+
+/* ================= BUTTONS ================= */
+.button {
+    padding: 14px 36px;
+    font-size: 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(255, 122, 162, 0.25);
+    backdrop-filter: blur(10px);
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 0 25px rgba(255,122,162,0.4);
+    transition: all 0.4s ease;
+}
+
+.button:hover {
+    background: rgba(255, 122, 162, 0.45);
+    box-shadow: 0 0 40px rgba(255,122,162,0.8);
+    transform: translateY(-2px);
+}
+
+#galleryBtn {
+    position: absolute;
+    left: 50%;
+    bottom: 70px;
+    transform: translateX(-50%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+#backBtn {
+    position: absolute;
+    top: 30px;
+    left: 30px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+#carousel {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1.2s ease;
+}
+
+.carousel-card {
+    width: 70%;
+    max-width: 620px;
+    height: 75%;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+    background: rgba(0,0,0,0.4);
+}
+
+.carousel-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    animation: fade 3s ease-in-out infinite;
+}
+
+@keyframes fade {
+    0%, 100% { opacity: 1 }
+    50% { opacity: 0.95 }
+}
+
+.hint {
+    position: absolute;
+    bottom: 20px;
+    width: 100%;
+    text-align: center;
+    color: #aaa;
+    font-size: 14px;
+}
 </style>
 </head>
+
 <body>
 
 <canvas id="canvas"></canvas>
+
+<button id="galleryBtn" class="button">Gallery</button>
+<button id="backBtn" class="button">Back</button>
+
+<div id="carousel">
+    <div class="carousel-card">
+        <img id="carouselImg" src="img1.jpg">
+    </div>
+</div>
+
+<div class="hint">click once to start</div>
+
+<audio id="audio" loop>
+    <source src="audio.mp3" type="audio/mpeg">
+</audio>
 
 <script>
 const canvas = document.getElementById("canvas");
@@ -34,12 +131,18 @@ function resize() {
 resize();
 window.addEventListener("resize", resize);
 
-let outlinePoints = [];
+const audio = document.getElementById("audio");
+let audioStarted = false;
+
+let heartPoints = [];
 let drawIndex = 0;
-let fillProgress = 0;
+let fillAlpha = 0;
+let heartAlpha = 1;
+let sparkleActive = false;
 let showText = false;
 let textAlpha = 0;
-let sparkleActive = false;
+let fadingOut = false;
+let restoring = false;
 
 for (let t = 0; t <= Math.PI * 2; t += 0.02) {
     const x = 16 * Math.pow(Math.sin(t), 3);
@@ -49,43 +152,44 @@ for (let t = 0; t <= Math.PI * 2; t += 0.02) {
         2 * Math.cos(3 * t) -
         Math.cos(4 * t);
 
-    outlinePoints.push({ x: x * 12, y: -y * 12 });
+    heartPoints.push({ x: x * 12, y: -y * 12 });
 }
 
-const SPARKLE_COUNT = 200;
-const sparkles = [];
-
-function createSparkle() {
-    return {
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        r: Math.random() * 1.5 + 0.5,
-        alpha: Math.random(),
-        speed: Math.random() * 0.015 + 0.005
-    };
-}
-
-for (let i = 0; i < SPARKLE_COUNT; i++) {
-    sparkles.push(createSparkle());
-}
+const sparkles = Array.from({ length: 200 }, () => ({
+    x: Math.random() * window.innerWidth,
+    y: Math.random() * window.innerHeight,
+    r: Math.random() * 1.5 + 0.5,
+    a: Math.random(),
+    s: Math.random() * 0.01 + 0.005
+}));
 
 function drawSparkles() {
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#fff";
     sparkles.forEach(s => {
-        ctx.globalAlpha = s.alpha;
+        ctx.globalAlpha = s.a;
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
         ctx.fill();
-
-        s.alpha += s.speed;
-        if (s.alpha > 1) {
-            s.alpha = 0;
-            s.x = Math.random() * canvas.width;
-            s.y = Math.random() * canvas.height;
-        }
+        s.a += s.s;
+        if (s.a > 1) s.a = 0;
     });
     ctx.globalAlpha = 1;
 }
+
+const galleryBtn = document.getElementById("galleryBtn");
+const backBtn = document.getElementById("backBtn");
+const carousel = document.getElementById("carousel");
+const carouselImg = document.getElementById("carouselImg");
+
+const images = ["img1.jpeg", "img2.jpeg", "img3.jpeg"];
+let imgIndex = 0;
+
+setInterval(() => {
+    if (carousel.style.opacity === "1") {
+        imgIndex = (imgIndex + 1) % images.length;
+        carouselImg.src = images[imgIndex];
+    }
+}, 3000);
 
 function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -94,51 +198,92 @@ function animate() {
 
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.globalAlpha = heartAlpha;
 
-    if (fillProgress > 0) {
-        ctx.globalAlpha = Math.min(fillProgress, 1);
+    if (fillAlpha > 0) {
         ctx.beginPath();
-        outlinePoints.forEach((p, i) => {
-            i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
-        });
+        heartPoints.forEach((p, i) =>
+            i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)
+        );
         ctx.closePath();
+        ctx.globalAlpha = fillAlpha * heartAlpha;
         ctx.fillStyle = "#ff7aa2";
         ctx.fill();
-        ctx.globalAlpha = 1;
     }
 
+    ctx.globalAlpha = heartAlpha;
     ctx.fillStyle = "#ff4d6d";
     for (let i = 0; i < drawIndex; i++) {
         ctx.beginPath();
-        ctx.arc(outlinePoints[i].x, outlinePoints[i].y, 2.5, 0, Math.PI * 2);
+        ctx.arc(heartPoints[i].x, heartPoints[i].y, 2.5, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    if (drawIndex < outlinePoints.length) {
-        drawIndex++;
-    } else if (fillProgress < 1) {
-        fillProgress += 0.02;
-    } else {
+    if (drawIndex < heartPoints.length) drawIndex++;
+    else if (fillAlpha < 1) fillAlpha += 0.02;
+    else {
         sparkleActive = true;
         showText = true;
+        galleryBtn.style.opacity = "1";
+        galleryBtn.style.pointerEvents = "auto";
     }
 
     if (showText) {
         textAlpha = Math.min(textAlpha + 0.01, 1);
-        ctx.globalAlpha = textAlpha;
+        ctx.globalAlpha = textAlpha * heartAlpha;
         ctx.font = "52px cursive";
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = "#fff";
         ctx.textAlign = "center";
         ctx.fillText("hana", 0, 25);
-        ctx.globalAlpha = 1;
     }
 
     ctx.restore();
 
+    if (fadingOut) {
+        heartAlpha -= 0.03;
+        if (heartAlpha <= 0) {
+            heartAlpha = 0;
+            carousel.style.opacity = "1";
+            carousel.style.pointerEvents = "auto";
+            backBtn.style.opacity = "1";
+            backBtn.style.pointerEvents = "auto";
+        }
+    }
+
+    if (restoring) {
+        heartAlpha += 0.03;
+        if (heartAlpha >= 1) {
+            heartAlpha = 1;
+            restoring = false;
+        }
+    }
+
     requestAnimationFrame(animate);
 }
-
 animate();
+
+document.addEventListener("click", () => {
+    if (!audioStarted) {
+        audio.play();
+        audioStarted = true;
+        document.querySelector(".hint").remove();
+    }
+});
+
+galleryBtn.onclick = () => {
+    fadingOut = true;
+    galleryBtn.style.opacity = "0";
+    galleryBtn.style.pointerEvents = "none";
+};
+
+backBtn.onclick = () => {
+    fadingOut = false;
+    restoring = true;
+    carousel.style.opacity = "0";
+    carousel.style.pointerEvents = "none";
+    backBtn.style.opacity = "0";
+    backBtn.style.pointerEvents = "none";
+};
 </script>
 
 </body>
