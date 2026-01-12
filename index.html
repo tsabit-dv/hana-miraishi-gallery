@@ -24,31 +24,34 @@ canvas{
 #ui{
     position:absolute;
     inset:0;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
     pointer-events:none;
 }
 button{
     pointer-events:auto;
     cursor:pointer;
-    border:none;
     border-radius:999px;
-    padding:14px 42px;
+    padding:14px 44px;
     font-size:18px;
     font-weight:600;
-    background:linear-gradient(135deg,#ff5f9e,#ff8ac7);
-    color:white;
-    box-shadow:0 12px 25px rgba(255,95,158,.45);
-    transition:.3s;
+    color:#ff7aa2;
+    background:rgba(255,122,162,.18);
+    backdrop-filter:blur(14px);
+    border:1px solid rgba(255,122,162,.35);
+    box-shadow:
+        0 8px 30px rgba(255,122,162,.35),
+        inset 0 0 18px rgba(255,255,255,.15);
+    transition:.35s;
 }
 button:hover{
-    transform:translateY(-2px);
-    box-shadow:0 18px 35px rgba(255,95,158,.6);
+    transform:translateY(-2px) scale(1.03);
+    box-shadow:
+        0 12px 40px rgba(255,122,162,.55),
+        inset 0 0 22px rgba(255,255,255,.2);
 }
 #galleryBtn{
-    margin-top:80px;
+    position:absolute;
+    left:50%;
+    transform:translateX(-50%);
     opacity:0;
     pointer-events:none;
 }
@@ -69,25 +72,25 @@ button:hover{
     max-width:720px;
     height:400px;
     border-radius:24px;
+    background:#111;
     overflow:hidden;
-    background:#000;
-    box-shadow:0 25px 50px rgba(0,0,0,.4);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    box-shadow:0 25px 50px rgba(0,0,0,.45);
 }
 .carousel-box img{
     width:100%;
     height:100%;
-    object-fit:cover;
+    object-fit:contain;
     transition:opacity .5s ease;
 }
 #backBtn{
-    margin-top:30px;
+    margin-top:34px;
 }
 .show{
-    opacity:1 !important;
-    pointer-events:auto !important;
-}
-.fade{
-    opacity:0;
+    opacity:1!important;
+    pointer-events:auto!important;
 }
 </style>
 </head>
@@ -130,13 +133,18 @@ addEventListener("resize",resize);
 const STATE={DRAW:0,FILL:1,TEXT:2,SPARKLE:3,IDLE:4,GALLERY:5};
 let state=STATE.DRAW;
 
-let points=[],i=0,fill=0,textA=0,heartAlpha=1;
+let points=[],i=0,fill=0,textA=0,heartAlpha=1,sparkleAlpha=0;
 
 for(let t=0;t<=Math.PI*2;t+=0.02){
     let x=16*Math.sin(t)**3;
     let y=13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t);
     points.push({x:x*12,y:-y*12});
 }
+
+const bounds={
+    minY:Math.min(...points.map(p=>p.y)),
+    maxY:Math.max(...points.map(p=>p.y))
+};
 
 let stars=[...Array(220)].map(()=>({
     x:Math.random()*canvas.width-canvas.width/2,
@@ -147,25 +155,28 @@ let stars=[...Array(220)].map(()=>({
 }));
 
 const photos=["img1.jpeg","img2.jpeg","img3.jpeg"];
-let photoIndex=0;
+let pIndex=0;
 
 setInterval(()=>{
     if(state!==STATE.GALLERY) return;
-    photoIndex=(photoIndex+1)%photos.length;
+    pIndex=(pIndex+1)%photos.length;
     img.style.opacity=0;
     setTimeout(()=>{
-        img.src=photos[photoIndex];
+        img.src=photos[pIndex];
         img.style.opacity=1;
     },300);
 },3000);
+
+const ease=t=>1-Math.pow(1-t,3);
 
 function draw(){
     ctx.clearRect(-canvas.width/2,-canvas.height/2,canvas.width,canvas.height);
 
     if(state>=STATE.SPARKLE){
+        sparkleAlpha=Math.min(sparkleAlpha+0.01,1);
+        ctx.globalAlpha=sparkleAlpha;
         ctx.fillStyle="#fff";
         stars.forEach(s=>{
-            ctx.globalAlpha=s.a;
             ctx.beginPath();
             ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
             ctx.fill();
@@ -178,11 +189,17 @@ function draw(){
     ctx.globalAlpha=heartAlpha;
 
     if(fill>0){
+        const f=ease(fill);
+        ctx.save();
         ctx.beginPath();
         points.forEach((p,j)=>j?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
         ctx.closePath();
+        ctx.clip();
+
+        const h=bounds.maxY-bounds.minY;
         ctx.fillStyle="#ff7aa2";
-        ctx.fill();
+        ctx.fillRect(-200,bounds.maxY-h*f,400,h*f);
+        ctx.restore();
     }
 
     ctx.fillStyle="#ff4d6d";
@@ -205,13 +222,14 @@ function draw(){
     if(state===STATE.DRAW && i<points.length) i++;
     else if(state===STATE.DRAW) state=STATE.FILL;
 
-    if(state===STATE.FILL && fill<1) fill+=0.02;
+    if(state===STATE.FILL && fill<1) fill+=0.012;
     else if(state===STATE.FILL) state=STATE.TEXT;
 
     if(state===STATE.TEXT && textA<1) textA+=0.02;
     else if(state===STATE.TEXT) state=STATE.SPARKLE;
 
     if(state===STATE.SPARKLE){
+        galleryBtn.style.top=(canvas.height/2 + bounds.maxY + 40)+"px";
         galleryBtn.classList.add("show");
         state=STATE.IDLE;
     }
